@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -21,13 +22,16 @@ public class PlayerController_Sapphi : MonoBehaviour
     private static int m_hStateWalk = Animator.StringToHash("base.locomotion.walk");
     private static int m_hStateRun = Animator.StringToHash("base.locomotion.run");
 
-    // Animation Variables
+    // Input Variables
     private bool m_bFlagMove;
     private bool m_bFlagSprint;
 
+    private float m_fRotation;
+
     // Velocity
-    private float m_fVelocityWalk   = 2.0f;
-    private float m_fVelocitySprint = 3.0f;
+    public float m_fVelocityWalk   = 2.0f;
+    public float m_fVelocitySprint = 3.5f;
+    private float m_fRotPerSec      = (Mathf.PI / 2.0f);
 
     // Use this for initialization
     void Start ()
@@ -59,6 +63,8 @@ public class PlayerController_Sapphi : MonoBehaviour
     {
         m_bFlagMove     = (Input.GetAxis("Vertical") > 0.0f);
         m_bFlagSprint   = Input.GetButton("Fire3");
+
+        m_fRotation     = Input.GetAxis("Horizontal");
     }
 
     private void UpdateMobility()
@@ -66,19 +72,49 @@ public class PlayerController_Sapphi : MonoBehaviour
         // Check current animation state
         AnimatorStateInfo anim_curr = m_animator.GetCurrentAnimatorStateInfo(0);
 
-        if (anim_curr.fullPathHash == m_hStateWalk)
+        // ROTATION
+        if (m_fRotation != 0.0f)
         {
-            m_body.velocity = new Vector3(m_body.velocity.x, m_body.velocity.y, m_fVelocityWalk);
+            // Calculate rotation for this frame based on DT
+            float rot_frame = (m_fRotPerSec * Time.deltaTime) * (m_fRotation > 0.0f ? 1.0f : -1.0f);
+            //float sin_rot = Mathf.Sin(rot_frame);
+            //float cos_rot = Mathf.Cos(rot_frame);
+            float sin_hrot = Mathf.Sin(rot_frame / 2.0f);
+            float cos_hrot = Mathf.Cos(rot_frame / 2.0f);
+
+            // Create quaternion
+            Quaternion q_rot = new Quaternion(0.0f, sin_hrot, 0.0f, cos_hrot);
+
+            // Normalize
+            double q_length = Math.Sqrt(Convert.ToDouble(Quaternion.Dot(q_rot, q_rot)));
+            float q_length_f = Convert.ToSingle(q_length);
+            q_rot.x /= q_length_f;
+            q_rot.y /= q_length_f;
+            q_rot.z /= q_length_f;
+            q_rot.w /= q_length_f;
+
+            // Apply quaternion
+            m_body.rotation = q_rot * m_body.rotation;  // :NOTE: I think we're only applying the left-hand rotations, 
+                                                        // and Unity generates the conjugate automatically to apply to the RHS
+        }
+
+        // MOVEMENT
+        Vector3 v_forward = transform.forward;
+        if (m_bFlagMove && (anim_curr.fullPathHash == m_hStateWalk))
+        {
+            m_body.velocity = m_fVelocityWalk * v_forward; // new Vector3(m_body.velocity.x, m_body.velocity.y, m_fVelocityWalk);
         }
         else
-        if (anim_curr.fullPathHash == m_hStateRun)
+        if (m_bFlagMove && (anim_curr.fullPathHash == m_hStateRun))
         {
-            m_body.velocity = new Vector3(m_body.velocity.x, m_body.velocity.y, m_fVelocitySprint);
+            m_body.velocity = m_fVelocitySprint * v_forward;//new Vector3(m_body.velocity.x, m_body.velocity.y, m_fVelocitySprint);
         }
         else
         {
-            m_body.velocity = new Vector3(m_body.velocity.x, m_body.velocity.y, 0.0f);
+            m_body.velocity = Vector3.zero;// new Vector3(m_body.velocity.x, m_body.velocity.y, 0.0f);
         }
+
+
         //switch (anim_curr.fullPathHash)
         //{
         //    case m_hStateWalk:
@@ -88,12 +124,12 @@ public class PlayerController_Sapphi : MonoBehaviour
         //    case m_hStateRun:
         //    {
 
-            //        break;
-            //    }
-            //    default:
-            //    {
-            //        break;
-            //    }
-            //}
+        //        break;
+        //    }
+        //    default:
+        //    {
+        //        break;
+        //    }
+        //}
     }
 }
