@@ -5,11 +5,13 @@ using UnityEngine;
 
 public class PlayerController_Sapphi : MonoBehaviour
 {
+    private static int m_idxLayerGround;
+
     // Components
-    private Animator m_animator;                //Character Animation
+    private Animator m_animator;                // Character Animation
     private Rigidbody m_body;                   // Rigidbody
-    private string m_animationNext = null;      //Character Last Animation
-    internal string m_animationCurr = null;     //Character Animation Name
+    private AnimatorStateInfo m_animStatePrev;  // Animation State (Previous Frame)
+    private AnimatorStateInfo m_animStateCurr;  // Animation State (Current Frame)
 
     // Animation Property Hashes
     private int m_hTriggerJump;
@@ -21,16 +23,21 @@ public class PlayerController_Sapphi : MonoBehaviour
     // Animation State Hashes
     private static int m_hStateWalk = Animator.StringToHash("base.locomotion.walk");
     private static int m_hStateRun = Animator.StringToHash("base.locomotion.run");
+    private static int m_hStateJumpInit = Animator.StringToHash("base.aerial.jump_init");
+    private static int m_hStateFreefall = Animator.StringToHash("base.aerial.freefall");
 
     // Input Variables
     private bool m_bFlagMove;
     private bool m_bFlagSprint;
+    private bool m_bFlagAirborne;
+    private bool m_bTriggerJump;
 
     private float m_fRotation;
 
     // Velocity
-    public float m_fVelocityWalk   = 2.0f;
-    public float m_fVelocitySprint = 3.5f;
+    public float m_fVelocityJump    = 10.0f;
+    public float m_fVelocityWalk    = 2.0f;
+    public float m_fVelocitySprint  = 3.5f;
     private float m_fRotPerSec      = (Mathf.PI / 2.0f);
 
     // Use this for initialization
@@ -41,7 +48,9 @@ public class PlayerController_Sapphi : MonoBehaviour
         m_hTriggerAttack    = Animator.StringToHash("Trigger_Attack");
         m_hFlagMove         = Animator.StringToHash("Flag_Move");
         m_hFlagSprint       = Animator.StringToHash("Flag_Sprint");
-        m_hFlagAerial       = Animator.StringToHash("Flag_Aerial");
+        m_hFlagAerial       = Animator.StringToHash("Flag_Airborne");
+
+        m_idxLayerGround    = LayerMask.NameToLayer("Ground");
 
         // Retrieve Animator component
         m_animator  = gameObject.GetComponent<Animator>();
@@ -53,8 +62,20 @@ public class PlayerController_Sapphi : MonoBehaviour
     {
         UpdateInput();
 
+        // Collision-based stuff...?
+
+
+        // UpdateAnimator()?
         m_animator.SetBool(m_hFlagMove, m_bFlagMove);
         m_animator.SetBool(m_hFlagSprint, m_bFlagSprint);
+        m_animator.SetBool(m_hFlagAerial, m_bFlagAirborne);
+        if (m_bTriggerJump)
+        {
+            m_animator.SetTrigger(m_hTriggerJump);
+        }
+
+        m_animStatePrev = m_animStateCurr;
+        m_animStateCurr = m_animator.GetCurrentAnimatorStateInfo(0);
 
         UpdateMobility();
 	}
@@ -65,12 +86,14 @@ public class PlayerController_Sapphi : MonoBehaviour
         m_bFlagSprint   = Input.GetButton("Fire3");
 
         m_fRotation     = Input.GetAxis("Horizontal");
+
+        m_bTriggerJump = Input.GetButtonDown("Jump");
     }
 
     private void UpdateMobility()
     {
         // Check current animation state
-        AnimatorStateInfo anim_curr = m_animator.GetCurrentAnimatorStateInfo(0);
+        AnimatorStateInfo anim_curr = m_animStateCurr;
 
         // ROTATION
         if (m_fRotation != 0.0f)
@@ -98,6 +121,16 @@ public class PlayerController_Sapphi : MonoBehaviour
                                                         // and Unity generates the conjugate automatically to apply to the RHS
         }
 
+        // JUMP
+        if (anim_curr.fullPathHash == m_hStateJumpInit)
+        {
+            // State: Enter
+            if (anim_curr.fullPathHash != m_animStatePrev.fullPathHash)
+            {
+                //m_body.velocity = new Vector3(m_body.velocity.x, m_fVelocityJump, m_body.velocity.z);
+            }
+        }
+
         // MOVEMENT
         Vector3 v_forward = transform.forward;
         if (m_bFlagMove && (anim_curr.fullPathHash == m_hStateWalk))
@@ -111,7 +144,7 @@ public class PlayerController_Sapphi : MonoBehaviour
         }
         else
         {
-            m_body.velocity = Vector3.zero;// new Vector3(m_body.velocity.x, m_body.velocity.y, 0.0f);
+            m_body.velocity = new Vector3(0.0f, m_body.velocity.y, 0.0f);// new Vector3(m_body.velocity.x, m_body.velocity.y, 0.0f);
         }
 
 
@@ -131,5 +164,32 @@ public class PlayerController_Sapphi : MonoBehaviour
         //        break;
         //    }
         //}
+    }
+
+
+
+    // COLLISION
+    private void OnCollisionEnter(Collision collision)
+    {
+        Vector3 v_euler = collision.gameObject.transform.rotation.eulerAngles;
+        if (collision.collider.gameObject.layer == m_idxLayerGround)
+        {
+            print("Grounded!");
+            m_bFlagAirborne = false;
+        }
+    }
+
+    private void OnCollisionStay(Collision collision)
+    {
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        Vector3 v_euler = collision.gameObject.transform.rotation.eulerAngles;
+        if (collision.collider.gameObject.layer == m_idxLayerGround)
+        {
+            print("Airborne!");
+            m_bFlagAirborne = true;
+        }
     }
 }
