@@ -14,6 +14,7 @@ public class PlayerController_Sapphi : MonoBehaviour
     private AnimatorStateInfo m_animStateCurr;  // Animation State (Current Frame)
 
     // Animation Property Hashes
+    private int m_hFloatVelY;
     private int m_hTriggerJump;
     private int m_hTriggerAttack;
     private int m_hFlagMove;
@@ -44,6 +45,7 @@ public class PlayerController_Sapphi : MonoBehaviour
     void Start ()
     {
         // Initialize hashes
+        m_hFloatVelY        = Animator.StringToHash("Float_VelY");
         m_hTriggerJump      = Animator.StringToHash("Trigger_Jump");
         m_hTriggerAttack    = Animator.StringToHash("Trigger_Attack");
         m_hFlagMove         = Animator.StringToHash("Flag_Move");
@@ -66,12 +68,13 @@ public class PlayerController_Sapphi : MonoBehaviour
 
 
         // UpdateAnimator()?
+        m_animator.SetFloat(m_hFloatVelY, m_body.velocity.y);
         m_animator.SetBool(m_hFlagMove, m_bFlagMove);
         m_animator.SetBool(m_hFlagSprint, m_bFlagSprint);
         m_animator.SetBool(m_hFlagAerial, m_bFlagAirborne);
         if (m_bTriggerJump)
         {
-            m_animator.SetTrigger(m_hTriggerJump);
+            m_animator.SetTrigger(m_hTriggerJump);  // :NOTE: Triggers seems to stick around until consumed, so need logic to only fire directly before jumping 
         }
 
         m_animStatePrev = m_animStateCurr;
