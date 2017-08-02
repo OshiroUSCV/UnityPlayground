@@ -36,7 +36,7 @@ public class PlayerController_Sapphi : MonoBehaviour
     private float m_fRotation;
 
     // Velocity
-    public float m_fVelocityJump    = 10.0f;
+    public float m_fVelocityJump    = 5.0f;
     public float m_fVelocityWalk    = 2.0f;
     public float m_fVelocitySprint  = 3.5f;
     private float m_fRotPerSec      = (Mathf.PI / 2.0f);
@@ -57,10 +57,22 @@ public class PlayerController_Sapphi : MonoBehaviour
         // Retrieve Animator component
         m_animator  = gameObject.GetComponent<Animator>();
         m_body      = gameObject.GetComponent<Rigidbody>();
+
+        //// Set up Animation Clip functions?
+        //RuntimeAnimatorController anim_controller = m_animator.runtimeAnimatorController;
+        //foreach (AnimationClip clip_curr in anim_controller.animationClips)
+        //{
+        //    if (clip_curr.name == "jump_init")
+        //    {
+        //        print(clip_curr.name);
+
+        //        clip_curr.events[0].objectReferenceParameter = this;
+        //    }
+        //}
     }
-	
-	// Update is called once per frame
-	void Update ()
+
+    // Update is called once per frame
+    void Update ()
     {
         UpdateInput();
 
@@ -150,7 +162,6 @@ public class PlayerController_Sapphi : MonoBehaviour
             m_body.velocity = new Vector3(0.0f, m_body.velocity.y, 0.0f);// new Vector3(m_body.velocity.x, m_body.velocity.y, 0.0f);
         }
 
-
         //switch (anim_curr.fullPathHash)
         //{
         //    case m_hStateWalk:
@@ -169,7 +180,15 @@ public class PlayerController_Sapphi : MonoBehaviour
         //}
     }
 
-
+    public void ApplyJump()
+    {
+        if (m_body)
+        {
+            print("JUMP!");
+            Vector3 vel_body    = m_body.velocity;
+            m_body.velocity     = vel_body + new Vector3(0.0f, m_fVelocityJump, 0.0f);
+        }
+    }
 
     // COLLISION
     private void OnCollisionEnter(Collision collision)
