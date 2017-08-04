@@ -13,6 +13,9 @@ public class PlayerController_Sapphi : MonoBehaviour
     private AnimatorStateInfo m_animStatePrev;  // Animation State (Previous Frame)
     private AnimatorStateInfo m_animStateCurr;  // Animation State (Current Frame)
 
+    private TrailRenderer m_trailKick;          // Kick Trail
+    private Transform m_trailParent;            // Kick Trail's Parent?
+
     // Animation Property Hashes
     private int m_hFloatVelY;
     private int m_hTriggerJump;
@@ -59,6 +62,9 @@ public class PlayerController_Sapphi : MonoBehaviour
         // Retrieve Animator component
         m_animator  = gameObject.GetComponent<Animator>();
         m_body      = gameObject.GetComponent<Rigidbody>();
+
+        m_trailKick     = gameObject.GetComponentInChildren<TrailRenderer>();
+        m_trailParent   = m_trailKick.transform.parent;
 
         //// Set up Animation Clip functions?
         //RuntimeAnimatorController anim_controller = m_animator.runtimeAnimatorController;
@@ -214,6 +220,19 @@ public class PlayerController_Sapphi : MonoBehaviour
             Vector3 vel_body    = m_body.velocity;
             m_body.velocity     = vel_body + new Vector3(0.0f, m_fVelocityJump, 0.0f);
         }
+    }
+
+    // 
+    public void KickStart()
+    {
+        print("Hya!");
+        m_trailKick.transform.SetParent(m_trailParent);
+        m_trailKick.transform.localPosition = Vector3.zero;
+    }
+
+    public void KickEnd()
+    {
+        m_trailKick.transform.parent = null;
     }
 
     // COLLISION
