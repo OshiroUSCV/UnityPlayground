@@ -22,6 +22,7 @@ public class PlayerController_Sapphi : MonoBehaviour
     private int m_hFlagAerial;
 
     // Animation State Hashes
+    private static int m_hStateIdle = Animator.StringToHash("base.idle");
     private static int m_hStateWalk = Animator.StringToHash("base.locomotion.walk");
     private static int m_hStateRun = Animator.StringToHash("base.locomotion.run");
     private static int m_hStateJumpInit = Animator.StringToHash("base.aerial.jump_init");
@@ -32,6 +33,7 @@ public class PlayerController_Sapphi : MonoBehaviour
     private bool m_bFlagSprint;
     private bool m_bFlagAirborne;
     private bool m_bTriggerJump;
+    private bool m_bTriggerAttack;
 
     private float m_fRotation;
 
@@ -79,18 +81,41 @@ public class PlayerController_Sapphi : MonoBehaviour
         // Collision-based stuff...?
 
 
+
+
+
         // UpdateAnimator()?
+        m_animStatePrev = m_animStateCurr;
+        m_animStateCurr = m_animator.GetCurrentAnimatorStateInfo(0);
+
         m_animator.SetFloat(m_hFloatVelY, m_body.velocity.y);
         m_animator.SetBool(m_hFlagMove, m_bFlagMove);
         m_animator.SetBool(m_hFlagSprint, m_bFlagSprint);
         m_animator.SetBool(m_hFlagAerial, m_bFlagAirborne);
-        if (m_bTriggerJump)
+
+        // :NOTE: Triggers seems to stick around until consumed, so need logic to only fire directly before jumping 
+        // Better way of handling this is probably state tags for "jumpable" states, or possibly a variety of Behaviors that set variables for PlayerController to know if in a good state
+        bool b_state_jump = (m_animStateCurr.fullPathHash == m_hStateWalk || m_animStateCurr.fullPathHash == m_hStateRun || m_animStateCurr.fullPathHash == m_hStateIdle);
+        if (m_bTriggerJump && b_state_jump)
         {
-            m_animator.SetTrigger(m_hTriggerJump);  // :NOTE: Triggers seems to stick around until consumed, so need logic to only fire directly before jumping 
+            m_animator.SetTrigger(m_hTriggerJump);  
+        }
+        else
+        {
+            m_animator.ResetTrigger(m_hTriggerJump);    // :TODO: This is really bad and should probably just reset the trigger when jump state init happens (in a new Behavior file)
         }
 
-        m_animStatePrev = m_animStateCurr;
-        m_animStateCurr = m_animator.GetCurrentAnimatorStateInfo(0);
+        if (m_bTriggerAttack)
+        {
+            print("Fire!");
+            m_animator.SetTrigger(m_hTriggerAttack);
+        }
+        else
+        {
+            m_animator.ResetTrigger(m_hTriggerAttack);
+        }
+
+        
 
         UpdateMobility();
 	}
@@ -102,7 +127,8 @@ public class PlayerController_Sapphi : MonoBehaviour
 
         m_fRotation     = Input.GetAxis("Horizontal");
 
-        m_bTriggerJump = Input.GetButtonDown("Jump");
+        m_bTriggerJump      = Input.GetButtonDown("Jump");
+        m_bTriggerAttack    = Input.GetButtonDown("Fire1");
     }
 
     private void UpdateMobility()
@@ -136,15 +162,15 @@ public class PlayerController_Sapphi : MonoBehaviour
                                                         // and Unity generates the conjugate automatically to apply to the RHS
         }
 
-        // JUMP
-        if (anim_curr.fullPathHash == m_hStateJumpInit)
-        {
-            // State: Enter
-            if (anim_curr.fullPathHash != m_animStatePrev.fullPathHash)
-            {
-                //m_body.velocity = new Vector3(m_body.velocity.x, m_fVelocityJump, m_body.velocity.z);
-            }
-        }
+        //// JUMP
+        //if (anim_curr.fullPathHash == m_hStateJumpInit)
+        //{
+        //    // State: Enter
+        //    if (anim_curr.fullPathHash != m_animStatePrev.fullPathHash)
+        //    {
+        //        //m_body.velocity = new Vector3(m_body.velocity.x, m_fVelocityJump, m_body.velocity.z);
+        //    }
+        //}
 
         // MOVEMENT
         Vector3 v_forward = transform.forward;
