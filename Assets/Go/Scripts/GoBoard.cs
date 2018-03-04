@@ -5,8 +5,8 @@ using UnityEngine;
 public class GoBoard : MonoBehaviour
 {
     // Variables: Pieces
-    public GameObject prefabPieceBlack;
-    public GameObject prefabPieceWhite;
+    public GoStone prefabPieceBlack;
+    public GoStone prefabPieceWhite;
 
     // Variables: Board
     public int gridSize;                        // Size of play field grid (always a square)
@@ -34,6 +34,7 @@ public class GoBoard : MonoBehaviour
         {
             for (int y = 0; y < gridSize; y++)
             {
+                // Calculate vectors
                 Vector2 point_board = new Vector2(x, y);
                 Vector2 pos_txt     = textureCoordsUL + (txtGridSquareLengthSide * new Vector2(x, y));
 
@@ -43,7 +44,17 @@ public class GoBoard : MonoBehaviour
                 float pos_z = transform.localScale.z * (((point_board.y * txtGridSquareLengthSide) + textureCoordsUL.y) / textureDimensions.y);
                 pos_z -= (0.5f * transform.localScale.z);
                 Vector3 pos_3D      = new Vector3(pos_x, 0.0f, pos_z);
-                gridPoints[x, y]    = new GoPoint(point_board, pos_txt, pos_3D);
+
+                // Set up adjacency flags for current point (Up/Right/Down/Left)
+                int flags_adjacent = 0x0000;
+
+                flags_adjacent |= ((y == (gridSize - 1) ? GoPoint.FLAG_NONE : GoPoint.FLAG_EMPTY) << GoPoint.OFFSET_U);
+                flags_adjacent |= ((y == 0 ? GoPoint.FLAG_NONE : GoPoint.FLAG_EMPTY) << GoPoint.OFFSET_D);
+                flags_adjacent |= ((x == 0 ? GoPoint.FLAG_NONE : GoPoint.FLAG_EMPTY) << GoPoint.OFFSET_L);
+                flags_adjacent |= ((x == (gridSize - 1) ? GoPoint.FLAG_NONE : GoPoint.FLAG_EMPTY) << GoPoint.OFFSET_R);
+
+                // Create Point
+                gridPoints[x, y]    = new GoPoint(point_board, pos_txt, pos_3D, flags_adjacent);
             }
         }
     }
@@ -157,7 +168,21 @@ public class GoBoard : MonoBehaviour
         return new Vector2(grid_x, grid_y);
     }
 
-    private GameObject CreatePiece(Vector2 posGrid, bool bIsBlack)
+    // Place piece on the board and handle board state management
+    private void PlacePiece(GoStone piece, Vector2 pointGrid)
+    {
+        int point_x = (int)pointGrid.x;
+        int point_y = (int)pointGrid.y;
+        
+        // Place GoPiece GameObject in the GoPoint
+        gridPoints[point_x, point_y].SetPiece(piece);
+
+        // Decrement neighboring point's empty count
+        UpdateAdjacentEmptySpaces(pointGrid, (piece.Color == GoColor.GC_Black));
+    }
+
+    // Creates piece and places it onto the board
+    private GoStone CreatePiece(Vector2 posGrid, bool bIsBlack)
     {
         //// Convert grid position to board's local position
         //float x = transform.localScale.x * (((posGrid.x * txtGridSquareLengthSide) + textureCoordsUL.x) / textureDimensions.x);
@@ -169,6 +194,9 @@ public class GoBoard : MonoBehaviour
         int point_x = (int)posGrid.x;
         int point_y = (int)posGrid.y;
 
+        // :DEBUG:
+        PrintAdjacencyData(point_x, point_y);
+
         // Check if a piece already exists on given spot. If so, we cannot create a new one
         if (!gridPoints[point_x, point_y].IsEmpty())
         {
@@ -179,28 +207,120 @@ public class GoBoard : MonoBehaviour
         // Spawn
         // :TODO:Offset Y by half the piece's height, aka scale-Y
         Debug.Log("[GB] Piece created @ ( " + point_x + ", " + point_y + ")");
-        GameObject piece_new = CreatePiece(gridPoints[point_x, point_y].PosLocal, bIsBlack);
-        gridPoints[point_x, point_y].SetPiece(piece_new, bIsBlack);
+
+        // Create the Unity GameObject
+        GoStone piece_new = CreatePiece(gridPoints[point_x, point_y].PosLocal, bIsBlack);
+        // Place newly-created piece on the board
+        PlacePiece(piece_new, new Vector2(point_x, point_y));
+        
         return piece_new;
     }
 
-    private GameObject CreatePiece(Vector3 posSpawn, bool bIsBlack)
+    
+
+    // Creates GameObject  in the 3D world
+    private GoStone CreatePiece(Vector3 posSpawn, bool bIsBlack)
     {
-        GameObject piece_new = Instantiate((bIsBlack ? prefabPieceBlack : prefabPieceWhite), posSpawn/*new Vector3(-0.5f, 0.0f, -1.0f)*/, Quaternion.identity, transform);
+        GoStone piece_new = Instantiate((bIsBlack ? prefabPieceBlack : prefabPieceWhite), posSpawn/*new Vector3(-0.5f, 0.0f, -1.0f)*/, Quaternion.identity, transform);
         return piece_new;
     }
 
-    private bool RemovePiece(Vector3 posGrid)
+    //private bool RemovePiece(Vector3 posGrid)
+    //{
+    //    int x = (int)posGrid.x;
+    //    int y = (int)posGrid.y;
+    //    return gridPoints[x, y].RemovePiece();
+    //}
+
+    private bool RemovePiece(Vector2 pointGrid)
     {
-        int x = (int)posGrid.x;
-        int y = (int)posGrid.y;
-        return gridPoints[x, y].RemovePiece();
+        int x = (int)pointGrid.x;
+        int y = (int)pointGrid.y;
+
+        bool b_removed = gridPoints[x, y].RemovePiece();
+        if (b_removed)
+        {
+            UpdateAdjacentEmptySpaces(pointGrid);
+        }
+        return b_removed;
     }
 
-    private bool RemovePiece(Vector2 posGrid)
+    // Remove: NEW
+    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter)
     {
-        int x = (int)posGrid.x;
-        int y = (int)posGrid.y;
-        return gridPoints[x, y].RemovePiece();
+        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_R);
+        UpdateAdjacencyState(pointCenter + new Vector2( 1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_L);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_U);
+        UpdateAdjacencyState(pointCenter + new Vector2(0,  1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_D);
+    }
+
+    // Add: NEW
+    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter, bool bIsBlack)
+    {
+        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_R);
+        UpdateAdjacencyState(pointCenter + new Vector2( 1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_L);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_U);
+        UpdateAdjacencyState(pointCenter + new Vector2(0,  1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_D);
+    }
+
+    private void UpdateAdjacencyState(Vector2 point, int state, int directionOffset)
+    {
+        // Return -1 if invalid point is requested
+        if (!IsValidPoint(point))
+        {
+            return;
+        }
+
+        int x = (int)point.x;
+        int y = (int)point.y;
+
+        // Clear previous state
+        int state_new = gridPoints[x, y].AdjSpacesState & ~(0x000F << directionOffset); // :NOTE: Offset before invert or you'll shift in zeroes!
+        // Apply new state
+        state_new |= (state << directionOffset);
+        // Store
+        gridPoints[x, y].AdjSpacesState = state_new;
+    }
+
+    //// Add/Remove: OLD
+    //private void OLDUpdateAdjacentEmptySpaces(Vector2 pointCenter, int offset)
+    //{
+    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(-1, 0), offset);
+    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(1, 0), offset);
+    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(0, -1), offset);
+    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(0, 1), offset);
+    //}
+
+    //// OLD
+    //private int OLDUpdateNumEmptySpaces(Vector2 point, int offset)
+    //{
+    //    // Return -1 if invalid point is requested
+    //    if (!IsValidPoint(point))
+    //    {
+    //        return -1;
+    //    }
+
+    //    int x = (int)point.x;
+    //    int y = (int)point.y;
+
+    //    // Calc & store new empty space count
+    //    int count_updated = gridPoints[x, y].AdjSpacesEmptyCount + offset;
+    //    gridPoints[x, y].AdjSpacesEmptyCount = count_updated;
+
+    //    return count_updated;
+    //}
+
+    // Check if a given point is a valid board position
+    private bool IsValidPoint(Vector2 point)
+    {
+        int x = (int)point.x;
+        int y = (int)point.y;
+
+        return (x >= 0 && x < gridSize && y >= 0 && y < gridSize);
+    }
+
+    private void PrintAdjacencyData(int x, int y)
+    {
+        gridPoints[x, y].PrintAdjacencyData();
     }
 }

@@ -317,7 +317,7 @@ GameObject:
   - component: {fileID: 1691320637}
   - component: {fileID: 1691320636}
   - component: {fileID: 1691320635}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: GoBoard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -348,9 +348,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 901f5b794f33e6a4fb78796e9eb9ef1f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  prefabPieceBlack: {fileID: 1926539117903616, guid: bc9eab1d00baa494ab70a60fc382ced0,
+  prefabPieceBlack: {fileID: 114003660277739566, guid: bc9eab1d00baa494ab70a60fc382ced0,
     type: 2}
-  prefabPieceWhite: {fileID: 1693178027676570, guid: 2be5c7ad0b3af9a479a66742a7c14206,
+  prefabPieceWhite: {fileID: 114731251631249938, guid: 2be5c7ad0b3af9a479a66742a7c14206,
     type: 2}
   gridSize: 9
   textureDimensions: {x: 211, y: 211}
