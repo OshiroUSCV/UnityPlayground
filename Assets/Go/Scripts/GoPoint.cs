@@ -95,6 +95,14 @@ public class GoPoint
     //{
     //    return GoColor.GC_White; 
     //}
+    public GoStone GetStone()
+    {
+        return GoPiece;
+    }
+    public override string ToString()
+    {
+        return string.Format("{0}{1}", (char)('A' + PointBoard.x), PointBoard.y);
+    }
     public void PrintAdjacencyData()
     {
         Debug.Log(string.Format("({0}-{1}): {2:X4}", (char)('A' + PointBoard.x), PointBoard.y, AdjSpacesState));

@@ -71,6 +71,7 @@ public class GoBoard : MonoBehaviour
         {
 
         }
+
         // Left: Black Piece
         if (Input.GetMouseButtonDown(0))
         {
@@ -87,6 +88,13 @@ public class GoBoard : MonoBehaviour
         if (Input.GetMouseButtonDown(2))
         {
             RemovePiece(GetClosestGridPoint());
+        }
+
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            Vector2 point_curr = GetClosestGridPoint();
+            Debug.Log(string.Format("Surrounded by Black: {0}", IsGroupCaptured(point_curr, GoColor.GC_White)));
+            Debug.Log(string.Format("Surrounded by White: {0}", IsGroupCaptured(point_curr, GoColor.GC_Black)));
         }
     }
 
@@ -311,16 +319,119 @@ public class GoBoard : MonoBehaviour
     //}
 
     // Check if a given point is a valid board position
-    private bool IsValidPoint(Vector2 point)
+    public bool IsValidPoint(int x, int y)
+    {
+        return (x >= 0 && x < gridSize && y >= 0 && y < gridSize);
+    }
+
+    public bool IsValidPoint(Vector2 point)
     {
         int x = (int)point.x;
         int y = (int)point.y;
 
-        return (x >= 0 && x < gridSize && y >= 0 && y < gridSize);
+        return IsValidPoint(x, y);
     }
+    
 
     private void PrintAdjacencyData(int x, int y)
     {
         gridPoints[x, y].PrintAdjacencyData();
+    }
+
+    // @param   point       Point to check if surrounded
+    // @param   groupColor  Color of the group. Will check if surrounded by opposite color
+    public bool IsGroupCaptured(Vector2 point, GoColor groupColor)
+    {
+        // Check: Bounds
+        if (!IsValidPoint(point))
+        {
+            return false;
+        }
+
+        int x_start = (int)point.x;
+        int y_start = (int)point.y;
+
+        //// Check: Stone
+        //// If no stone in targeted position
+
+        //if (gridPoints[x,y].IsEmpty())
+        //{
+        //    return false;
+        //}
+
+        // Create hash to store all points that have been checked
+        HashSet<GoPoint> hash_group = new HashSet<GoPoint>();
+        // Create queue to store list of points that need to be checked
+        Queue<GoPoint> queue_points = new Queue<GoPoint>();
+
+
+        int x_curr = x_start;
+        int y_curr = y_start;
+        GoPoint point_curr = gridPoints[x_curr, y_curr];
+
+        bool b_first = true;    // We don't want to check the Point/Stone at the initial position; so we can check even if no Stone is placed yet
+        while (b_first || queue_points.Count > 0)
+        {
+
+            bool b_allied_piece = (b_first || false);
+
+            // Check current point's Stone (or lack thereof)
+            if (!b_first)
+            {
+                // Retrieve next point
+                point_curr = queue_points.Dequeue();
+                x_curr = (int)point_curr.PointBoard.x;
+                y_curr = (int)point_curr.PointBoard.y;
+
+                // Only proceed if we haven't seen this point yet
+                if (!hash_group.Contains(point_curr))
+                {
+                    // If we don't find a stone, then there is at least one open space and the group is not captured
+                    if (point_curr.IsEmpty())
+                    {
+                        return false;
+                    }
+                    // Next, check if we have found an enemy Stone. If so, we don't want to check adjacent spaces
+                    if (point_curr.GetStone().Color == groupColor)
+                    {
+                        b_allied_piece = true;
+                    }
+                }
+            }
+
+            // We only want to skip the checks for our initial point
+            b_first = false;
+
+            // Retrieve adjacent points if allied
+            if (b_allied_piece)
+            {
+                // Up
+                if (IsValidPoint(x_curr, y_curr + 1))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr, y_curr + 1]);
+                }
+                // Down
+                if (IsValidPoint(x_curr, y_curr - 1))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr, y_curr - 1]);
+                }
+                // Left
+                if (IsValidPoint(x_curr - 1, y_curr))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr - 1, y_curr]);
+                }
+                // Right
+                if (IsValidPoint(x_curr + 1, y_curr))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr + 1, y_curr]);
+                }   
+            }
+
+            // Mark GoPoint as checked
+            hash_group.Add(point_curr);
+        }
+
+        // If we run out of points to check without having found an empty spot, this group is captured
+        return true;
     }
 }
