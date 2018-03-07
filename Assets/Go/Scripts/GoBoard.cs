@@ -87,7 +87,14 @@ public class GoBoard : MonoBehaviour
         else
         if (Input.GetMouseButtonDown(2))
         {
-            RemovePiece(GetClosestGridPoint());
+            // RemovePiece(GetClosestGridPoint());
+            Vector2 point_clicked   = GetClosestGridPoint();
+            GoPoint point_curr      = gridPoints[(int)point_clicked.x, (int)point_clicked.y];
+            if (!point_curr.IsEmpty())
+            {
+                int count_captured = TryCaptureGroup(point_clicked, point_curr.GetStone().Color);
+                Debug.Log("Stones Captured: " + count_captured);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.C))
@@ -351,14 +358,6 @@ public class GoBoard : MonoBehaviour
         int x_start = (int)point.x;
         int y_start = (int)point.y;
 
-        //// Check: Stone
-        //// If no stone in targeted position
-
-        //if (gridPoints[x,y].IsEmpty())
-        //{
-        //    return false;
-        //}
-
         // Create hash to store all points that have been checked
         HashSet<GoPoint> hash_group = new HashSet<GoPoint>();
         // Create queue to store list of points that need to be checked
@@ -433,5 +432,85 @@ public class GoBoard : MonoBehaviour
 
         // If we run out of points to check without having found an empty spot, this group is captured
         return true;
+    }
+
+    // @param   point       Point to check if surrounded
+    // @param   groupColor  Color of the group. Will check if surrounded by opposite color
+    // @return  The # of Stones captured
+    public int TryCaptureGroup(Vector2 point, GoColor groupColor)
+    {
+        // Check: Bounds
+        if (!IsValidPoint(point))
+        {
+            return 0;
+        }
+
+        // Create hash to store all points that have been checked
+        HashSet<GoPoint> hash_group = new HashSet<GoPoint>();
+        // Create queue to store list of points that need to be checked
+        Queue<GoPoint> queue_points = new Queue<GoPoint>();
+
+        GoPoint point_curr;
+        int count_captured = 0;
+        int x_curr = (int)point.x;
+        int y_curr = (int)point.y;
+ 
+        // Retrieve initial point
+        queue_points.Enqueue(gridPoints[x_curr, y_curr]);
+        while (queue_points.Count > 0)
+        {
+            // Retrieve next point
+            point_curr = queue_points.Dequeue();
+            x_curr = (int)point_curr.PointBoard.x;
+            y_curr = (int)point_curr.PointBoard.y;
+
+            bool b_allied_piece = false;
+
+            // Only proceed if we haven't seen this point yet
+            if (!hash_group.Contains(point_curr))
+            {
+                // Check current point for an allied stone
+                if (!point_curr.IsEmpty() && point_curr.GetStone().Color == groupColor)
+                {
+                    b_allied_piece = true;
+                }
+            }
+
+            
+            if (b_allied_piece)
+            {
+                // Remove piece
+                RemovePiece(point_curr.PointBoard);
+                count_captured++;
+
+                // Retrieve adjacent points if allied
+                // Up
+                if (IsValidPoint(x_curr, y_curr + 1))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr, y_curr + 1]);
+                }
+                // Down
+                if (IsValidPoint(x_curr, y_curr - 1))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr, y_curr - 1]);
+                }
+                // Left
+                if (IsValidPoint(x_curr - 1, y_curr))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr - 1, y_curr]);
+                }
+                // Right
+                if (IsValidPoint(x_curr + 1, y_curr))
+                {
+                    queue_points.Enqueue(gridPoints[x_curr + 1, y_curr]);
+                }
+            }
+
+            // Mark GoPoint as checked
+            hash_group.Add(point_curr);
+        }
+
+        // Finally, return the # of Stones removed
+        return count_captured;
     }
 }
