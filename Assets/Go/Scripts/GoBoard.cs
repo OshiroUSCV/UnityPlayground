@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class GoBoard : MonoBehaviour
 {
+    protected GoStateManager gameStateManager;
+
     // Variables: Pieces
     public GoStone prefabPieceBlack;
     public GoStone prefabPieceWhite;
@@ -58,64 +60,62 @@ public class GoBoard : MonoBehaviour
             }
         }
     }
+
+    // Called during StateManager's Start()
+    public void SetGameManager(GoStateManager manager)
+    {
+        gameStateManager = manager;
+    }
 	
-	// Update is called once per frame
 	void Update () {
 		
 	}
 
     private void OnMouseOver()
     {
-        // Click (Any)
-        if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2))
-        {
-
-        }
-
-        // Left: Black Piece
+        // Input Handling
         if (Input.GetMouseButtonDown(0))
         {
-            OnMouseClick(true); 
-        }
-        // Right: White Piece
-        else
-        if (Input.GetMouseButtonDown(1))
-        {
-            OnMouseClick(false);
-        }
-        // Middle: Remove
-        else
-        if (Input.GetMouseButtonDown(2))
-        {
-            // RemovePiece(GetClosestGridPoint());
-            Vector2 point_clicked   = GetClosestGridPoint();
-            GoPoint point_curr      = gridPoints[(int)point_clicked.x, (int)point_clicked.y];
-            if (!point_curr.IsEmpty())
-            {
-                int count_captured = TryCaptureGroup(point_clicked, point_curr.GetStone().Color);
-                Debug.Log("Stones Captured: " + count_captured);
-            }
+            OnMouseClick();
         }
 
+        //// Left: Black Piece
+        //if (Input.GetMouseButtonDown(0))
+        //{
+        //    OnMouseClickDEBUG(true); 
+        //}
+        //// Right: White Piece
+        //else
+        //if (Input.GetMouseButtonDown(1))
+        //{
+        //    OnMouseClickDEBUG(false);
+        //}
+        //// Middle: Remove
+        //else
+        //if (Input.GetMouseButtonDown(2))
+        //{
+        //    // RemovePiece(GetClosestGridPoint());
+        //    Vector2 point_clicked   = GetClosestGridPoint();
+        //    GoPoint point_curr      = gridPoints[(int)point_clicked.x, (int)point_clicked.y];
+        //    if (!point_curr.IsEmpty())
+        //    {
+        //        int count_captured = TryCaptureGroup(point_clicked, point_curr.GetStone().Color);
+        //        Debug.Log("Stones Captured: " + count_captured);
+        //    }
+        //}
+
+        // DEBUG: Check Point info
         if (Input.GetKeyDown(KeyCode.C))
         {
             Vector2 point_curr = GetClosestGridPoint();
+            PrintAdjacencyData((int)point_curr.x, (int)point_curr.y);
             Debug.Log(string.Format("Surrounded by Black: {0}", IsGroupCaptured(point_curr, GoColor.GC_White)));
             Debug.Log(string.Format("Surrounded by White: {0}", IsGroupCaptured(point_curr, GoColor.GC_Black)));
         }
     }
 
-    private void OnMouseDown()
+    private void OnMouseClick()
     {
-        
-    }
-
-    private void OnMouseClick(bool bLeft)
-    {
-        // For clarity/readability
-        bool b_black = bLeft;
-
-        // Trying w/ Raycast
         // Cast ray from current mouse position to board
         Ray ray_click = Camera.main.ScreenPointToRay(Input.mousePosition);
 
@@ -125,11 +125,52 @@ public class GoBoard : MonoBehaviour
             // Determine closest grid space
             Vector2 pos_grid = GetClosestGridSpace(hit_info.point);
 
-            // Create piece on that position :TODO: Verify if within radius
-            CreatePiece(pos_grid, b_black);
+            // :TODO: Check if close enough to that point to count as a click
+
+            // Report the clicked point
+            gameStateManager.OnBoardPointClicked(pos_grid);
         }
     }
 
+    //private void OnMouseClickDEBUG(bool bLeft)
+    //{
+    //    // For clarity/readability
+    //    bool b_black = bLeft;
+
+    //    // Cast ray from current mouse position to board
+    //    Ray ray_click = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+    //    RaycastHit hit_info;
+    //    if (Physics.Raycast(ray_click, out hit_info))//Physics.Raycast(pos_mouse, Vector3.down, out hit_info, /*Maximum Distance */1000.0f))
+    //    {
+    //        // Determine closest grid space
+    //        Vector2 pos_grid = GetClosestGridSpace(hit_info.point);
+
+    //        // Create piece on that position :TODO: Verify if within radius
+    //        CreatePiece(pos_grid, b_black);
+    //    }
+    //}
+
+
+    // Check if a given point is a valid board position
+    public bool IsValidPoint(int x, int y)
+    {
+        return (x >= 0 && x < gridSize && y >= 0 && y < gridSize);
+    }
+
+    public bool IsValidPoint(Vector2 point)
+    {
+        int x = (int)point.x;
+        int y = (int)point.y;
+
+        return IsValidPoint(x, y);
+    }
+
+    // @return  True if point is valid AND empty
+    public bool IsPointEmpty(Vector2 point)
+    {
+        return (IsValidPoint(point) && gridPoints[(int)point.x, (int)point.y].IsEmpty());
+    }
 
     // @return  Closest point on board if mouse currently hovering over board; (-1,-1) otherwise
     private Vector2 GetClosestGridPoint()
@@ -188,16 +229,63 @@ public class GoBoard : MonoBehaviour
     {
         int point_x = (int)pointGrid.x;
         int point_y = (int)pointGrid.y;
-        
+        GoPoint point_center = gridPoints[point_x, point_y];
+        GoColor color_attacker = piece.Color;
+        GoColor color_enemy = (color_attacker == GoColor.GC_Black ? GoColor.GC_White : GoColor.GC_Black);
+
         // Place GoPiece GameObject in the GoPoint
-        gridPoints[point_x, point_y].SetPiece(piece);
+        point_center.SetPiece(piece);
 
         // Decrement neighboring point's empty count
-        UpdateAdjacentEmptySpaces(pointGrid, (piece.Color == GoColor.GC_Black));
+        UpdateAdjacentEmptySpaces(pointGrid, (color_attacker == GoColor.GC_Black));
+
+        // Check if we have captured any enemy pieces (Up/Down/Left/Right
+        Queue<Vector2> queue_adjacents = new Queue<Vector2>();
+        queue_adjacents.Enqueue(pointGrid + new Vector2(0,  1));
+        queue_adjacents.Enqueue(pointGrid + new Vector2(0, -1));
+        queue_adjacents.Enqueue(pointGrid + new Vector2(-1, 0));
+        queue_adjacents.Enqueue(pointGrid + new Vector2( 1, 0));
+
+        int count_captured = 0;
+        while (queue_adjacents.Count > 0)
+        {
+            // Retrieve Vector2
+            Vector2 vec_curr = queue_adjacents.Dequeue();
+
+            // Check if valid
+            if (IsValidPoint(vec_curr))
+            {
+                // Retrieve GoPoint
+                GoPoint point_curr = gridPoints[(int)vec_curr.x, (int)vec_curr.y];
+                // Check if valid, if enemy color
+                if (!point_curr.IsEmpty() && point_curr.GetStone().Color == color_enemy)
+                {
+                    // If so, check if surrounded. 
+                    if (IsGroupCaptured(vec_curr, color_enemy))
+                    {
+                        // If so, remove group and report score to GoStateManager
+                        count_captured += TryCaptureGroup(vec_curr, color_enemy);
+                    }
+                }
+            }
+        }
+        
+        // Report captured stones
+        if (count_captured > 0)
+        {
+            gameStateManager.OnStonesCaptured(color_attacker, count_captured);
+        }
+    }
+
+    // Creates GameObject  in the 3D world
+    private GoStone CreatePiece(Vector3 posSpawn, bool bIsBlack)
+    {
+        GoStone piece_new = Instantiate((bIsBlack ? prefabPieceBlack : prefabPieceWhite), posSpawn/*new Vector3(-0.5f, 0.0f, -1.0f)*/, Quaternion.identity, transform);
+        return piece_new;
     }
 
     // Creates piece and places it onto the board
-    private GoStone CreatePiece(Vector2 posGrid, bool bIsBlack)
+    public GoStone CreatePiece(Vector2 posGrid, bool bIsBlack)
     {
         //// Convert grid position to board's local position
         //float x = transform.localScale.x * (((posGrid.x * txtGridSquareLengthSide) + textureCoordsUL.x) / textureDimensions.x);
@@ -208,9 +296,6 @@ public class GoBoard : MonoBehaviour
 
         int point_x = (int)posGrid.x;
         int point_y = (int)posGrid.y;
-
-        // :DEBUG:
-        PrintAdjacencyData(point_x, point_y);
 
         // Check if a piece already exists on given spot. If so, we cannot create a new one
         if (!gridPoints[point_x, point_y].IsEmpty())
@@ -228,15 +313,6 @@ public class GoBoard : MonoBehaviour
         // Place newly-created piece on the board
         PlacePiece(piece_new, new Vector2(point_x, point_y));
         
-        return piece_new;
-    }
-
-    
-
-    // Creates GameObject  in the 3D world
-    private GoStone CreatePiece(Vector3 posSpawn, bool bIsBlack)
-    {
-        GoStone piece_new = Instantiate((bIsBlack ? prefabPieceBlack : prefabPieceWhite), posSpawn/*new Vector3(-0.5f, 0.0f, -1.0f)*/, Quaternion.identity, transform);
         return piece_new;
     }
 
@@ -258,91 +334,6 @@ public class GoBoard : MonoBehaviour
             UpdateAdjacentEmptySpaces(pointGrid);
         }
         return b_removed;
-    }
-
-    // Remove: NEW
-    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter)
-    {
-        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_R);
-        UpdateAdjacencyState(pointCenter + new Vector2( 1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_L);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_U);
-        UpdateAdjacencyState(pointCenter + new Vector2(0,  1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_D);
-    }
-
-    // Add: NEW
-    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter, bool bIsBlack)
-    {
-        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_R);
-        UpdateAdjacencyState(pointCenter + new Vector2( 1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_L);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_U);
-        UpdateAdjacencyState(pointCenter + new Vector2(0,  1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_D);
-    }
-
-    private void UpdateAdjacencyState(Vector2 point, int state, int directionOffset)
-    {
-        // Return -1 if invalid point is requested
-        if (!IsValidPoint(point))
-        {
-            return;
-        }
-
-        int x = (int)point.x;
-        int y = (int)point.y;
-
-        // Clear previous state
-        int state_new = gridPoints[x, y].AdjSpacesState & ~(0x000F << directionOffset); // :NOTE: Offset before invert or you'll shift in zeroes!
-        // Apply new state
-        state_new |= (state << directionOffset);
-        // Store
-        gridPoints[x, y].AdjSpacesState = state_new;
-    }
-
-    //// Add/Remove: OLD
-    //private void OLDUpdateAdjacentEmptySpaces(Vector2 pointCenter, int offset)
-    //{
-    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(-1, 0), offset);
-    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(1, 0), offset);
-    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(0, -1), offset);
-    //    OLDUpdateNumEmptySpaces(pointCenter + new Vector2(0, 1), offset);
-    //}
-
-    //// OLD
-    //private int OLDUpdateNumEmptySpaces(Vector2 point, int offset)
-    //{
-    //    // Return -1 if invalid point is requested
-    //    if (!IsValidPoint(point))
-    //    {
-    //        return -1;
-    //    }
-
-    //    int x = (int)point.x;
-    //    int y = (int)point.y;
-
-    //    // Calc & store new empty space count
-    //    int count_updated = gridPoints[x, y].AdjSpacesEmptyCount + offset;
-    //    gridPoints[x, y].AdjSpacesEmptyCount = count_updated;
-
-    //    return count_updated;
-    //}
-
-    // Check if a given point is a valid board position
-    public bool IsValidPoint(int x, int y)
-    {
-        return (x >= 0 && x < gridSize && y >= 0 && y < gridSize);
-    }
-
-    public bool IsValidPoint(Vector2 point)
-    {
-        int x = (int)point.x;
-        int y = (int)point.y;
-
-        return IsValidPoint(x, y);
-    }
-    
-
-    private void PrintAdjacencyData(int x, int y)
-    {
-        gridPoints[x, y].PrintAdjacencyData();
     }
 
     // @param   point       Point to check if surrounded
@@ -513,4 +504,49 @@ public class GoBoard : MonoBehaviour
         // Finally, return the # of Stones removed
         return count_captured;
     }
+
+    ////////////////////////////////////////////////////////////////////
+    // :NOTE: Adjacency Status Tracking. MAY BE OBSOLETE/UNNECESSARY
+    // Remove: NEW
+    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter)
+    {
+        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_R);
+        UpdateAdjacencyState(pointCenter + new Vector2(1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_L);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_U);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, 1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_D);
+    }
+
+    // Add: NEW
+    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter, bool bIsBlack)
+    {
+        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_R);
+        UpdateAdjacencyState(pointCenter + new Vector2(1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_L);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_U);
+        UpdateAdjacencyState(pointCenter + new Vector2(0, 1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_D);
+    }
+
+    private void UpdateAdjacencyState(Vector2 point, int state, int directionOffset)
+    {
+        // Return -1 if invalid point is requested
+        if (!IsValidPoint(point))
+        {
+            return;
+        }
+
+        int x = (int)point.x;
+        int y = (int)point.y;
+
+        // Clear previous state
+        int state_new = gridPoints[x, y].AdjSpacesState & ~(0x000F << directionOffset); // :NOTE: Offset before invert or you'll shift in zeroes!
+        // Apply new state
+        state_new |= (state << directionOffset);
+        // Store
+        gridPoints[x, y].AdjSpacesState = state_new;
+    }
+
+    private void PrintAdjacencyData(int x, int y)
+    {
+        gridPoints[x, y].PrintAdjacencyData();
+    }
+    ////////////////////////////////////////////////////////////////////
 }
