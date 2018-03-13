@@ -289,10 +289,12 @@ public class GoBoard : MonoBehaviour
 
         // Check if we have captured any enemy pieces (Up/Down/Left/Right
         Queue<Vector2> queue_adjacents = new Queue<Vector2>();
-        queue_adjacents.Enqueue(pointGrid + new Vector2(0,  1));
-        queue_adjacents.Enqueue(pointGrid + new Vector2(0, -1));
-        queue_adjacents.Enqueue(pointGrid + new Vector2(-1, 0));
-        queue_adjacents.Enqueue(pointGrid + new Vector2( 1, 0));
+        List<Vector2> list_adj = GetAdjacentPoints(pointGrid);
+        foreach (Vector2 point_adj in list_adj)
+        {
+            queue_adjacents.Enqueue(point_adj);
+
+        }
 
         int count_captured = 0;
         while (queue_adjacents.Count > 0)
@@ -458,25 +460,11 @@ public class GoBoard : MonoBehaviour
             // Retrieve adjacent points if allied
             if (b_allied_piece)
             {
-                // Up
-                if (IsValidPoint(x_curr, y_curr + 1))
+                List<Vector2> list_adj = GetAdjacentPoints(point_curr.PointBoard);
+
+                foreach (Vector2 point_adj in list_adj)
                 {
-                    queue_points.Enqueue(gridPoints[x_curr, y_curr + 1]);
-                }
-                // Down
-                if (IsValidPoint(x_curr, y_curr - 1))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr, y_curr - 1]);
-                }
-                // Left
-                if (IsValidPoint(x_curr - 1, y_curr))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr - 1, y_curr]);
-                }
-                // Right
-                if (IsValidPoint(x_curr + 1, y_curr))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr + 1, y_curr]);
+                    queue_points.Enqueue(gridPoints[(int)point_adj.x, (int)point_adj.y]);
                 }
             }
 
@@ -537,25 +525,10 @@ public class GoBoard : MonoBehaviour
                 count_captured++;
 
                 // Retrieve adjacent points if allied
-                // Up
-                if (IsValidPoint(x_curr, y_curr + 1))
+                List<Vector2> list_adj = GetAdjacentPoints(point_curr.PointBoard);
+                foreach(Vector2 point_adj in list_adj)
                 {
-                    queue_points.Enqueue(gridPoints[x_curr, y_curr + 1]);
-                }
-                // Down
-                if (IsValidPoint(x_curr, y_curr - 1))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr, y_curr - 1]);
-                }
-                // Left
-                if (IsValidPoint(x_curr - 1, y_curr))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr - 1, y_curr]);
-                }
-                // Right
-                if (IsValidPoint(x_curr + 1, y_curr))
-                {
-                    queue_points.Enqueue(gridPoints[x_curr + 1, y_curr]);
+                    queue_points.Enqueue(gridPoints[(int)point_adj.x, (int)point_adj.y]);
                 }
             }
 
