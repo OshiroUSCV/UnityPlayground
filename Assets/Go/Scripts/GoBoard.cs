@@ -188,10 +188,33 @@ public class GoBoard : MonoBehaviour
         // Check: If new Stone would be immediately be captured
         if (IsGroupCaptured(point, colorStone))
         {
-            // If a Stone would immediately be captured, we can play it IFF that move would capture enemy Stone(s)
+            // If a Stone would immediately be captured, 
+            // we can play it IFF that move would capture enemy Stone(s)
 
-            Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move");
-            return false;
+            List<Vector2> list_blocked = new List<Vector2>();
+            list_blocked.Add(point);
+
+            // Check adjacent spots to see if we can capture enemy Stone(s)
+            List<Vector2> list_adjacent = GetAdjacentPoints(point);
+            bool b_capture_detected = false;
+            foreach(Vector2 point_adj in list_adjacent)
+            {
+                GoPoint gp_adj = gridPoints[(int)point_adj.x, (int)point_adj.y];
+                // We only care about checking against enemy stones
+
+                GoStone stone_adj = gp_adj.GetStone();
+                if (stone_adj.Color != colorStone)
+                {
+                    b_capture_detected |= IsGroupCaptured(point_adj, stone_adj.Color, list_blocked);
+                }
+            }
+
+            // If no captured were found, play is illegal
+            if (!b_capture_detected)
+            {
+                Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move");
+                return false;
+            }
         }
 
         return true;
@@ -365,6 +388,13 @@ public class GoBoard : MonoBehaviour
     // @param   groupColor  Color of the group. Will check if surrounded by opposite color
     public bool IsGroupCaptured(Vector2 point, GoColor groupColor)
     {
+        List<Vector2> list_empty = new List<Vector2>();
+        return IsGroupCaptured(point, groupColor, list_empty);
+    }
+
+    // @param   listExcludes   List of board Points that will not be checkable. Used to simulate empty spaces actually having enemy Stones within
+    public bool IsGroupCaptured(Vector2 point, GoColor groupColor, List<Vector2> listExcludes )
+    {
         // Check: Bounds
         if (!IsValidPoint(point))
         {
@@ -379,6 +409,14 @@ public class GoBoard : MonoBehaviour
         // Create queue to store list of points that need to be checked
         Queue<GoPoint> queue_points = new Queue<GoPoint>();
 
+        // Insert excluded points into our HashSet
+        foreach (Vector2 point_exclude in listExcludes)
+        {
+            if (IsValidPoint(point_exclude))
+            {
+                hash_group.Add(gridPoints[(int)point_exclude.x, (int)point_exclude.y]);
+            }
+        }
 
         int x_curr = x_start;
         int y_curr = y_start;
@@ -439,7 +477,7 @@ public class GoBoard : MonoBehaviour
                 if (IsValidPoint(x_curr + 1, y_curr))
                 {
                     queue_points.Enqueue(gridPoints[x_curr + 1, y_curr]);
-                }   
+                }
             }
 
             // Mark GoPoint as checked
@@ -449,11 +487,6 @@ public class GoBoard : MonoBehaviour
         // If we run out of points to check without having found an empty spot, this group is captured
         return true;
     }
-
-    //public bool IsGroupCaptured(Vector2 point, GoColor groupColor, Queue<Vector2> )
-    //{
-    //    return false;
-    //}
 
     // @param   point       Point to check if surrounded
     // @param   groupColor  Color of the group. Will check if surrounded by opposite color
@@ -497,7 +530,6 @@ public class GoBoard : MonoBehaviour
                 }
             }
 
-            
             if (b_allied_piece)
             {
                 // Remove piece
@@ -533,6 +565,40 @@ public class GoBoard : MonoBehaviour
 
         // Finally, return the # of Stones removed
         return count_captured;
+    }
+
+    // @return  A list of valid adjacent points to the given point
+    private List<Vector2> GetAdjacentPoints(Vector2 pointCenter)
+    {
+        List<Vector2> list_udlr = new List<Vector2>();
+        Vector2 point_curr;
+
+        // UP
+        point_curr = pointCenter + new Vector2(0, 1);
+        if (IsValidPoint(point_curr))
+        {
+            list_udlr.Add(point_curr);
+        }
+        // DOWN
+        point_curr = pointCenter + new Vector2(0, -1);
+        if (IsValidPoint(point_curr))
+        {
+            list_udlr.Add(point_curr);
+        }
+        // LEFT
+        point_curr = pointCenter + new Vector2(-1, 0);
+        if (IsValidPoint(point_curr))
+        {
+            list_udlr.Add(point_curr);
+        }
+        // RIGHT
+        point_curr = pointCenter + new Vector2(1, 0);
+        if (IsValidPoint(point_curr))
+        {
+            list_udlr.Add(point_curr);
+        }
+
+        return list_udlr;
     }
 
     ////////////////////////////////////////////////////////////////////

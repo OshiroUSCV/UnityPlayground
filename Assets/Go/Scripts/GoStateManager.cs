@@ -98,7 +98,7 @@ public class GoStateManager : MonoBehaviour
         }
 
         // If given Point is not a valid play, do nothing
-        if (!gameBoard.IsValidPlay(point, CurrentColor ))
+        if (!gameBoard.IsValidPlay(point, CurrentColor))
         {
             return;
 
