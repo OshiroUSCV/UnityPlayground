@@ -172,6 +172,31 @@ public class GoBoard : MonoBehaviour
         return (IsValidPoint(point) && gridPoints[(int)point.x, (int)point.y].IsEmpty());
     }
 
+    // @return  True if the specified color can play in the given Point
+    public bool IsValidPlay(Vector2 point, GoColor colorStone)
+    {
+        int x = (int)point.x;
+        int y = (int)point.y;
+
+        // Check: If Point is empty. If not, we cannot play there
+        if (!IsPointEmpty(point))
+        {
+            Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); already occupied");
+            return false;
+        }
+
+        // Check: If new Stone would be immediately be captured
+        if (IsGroupCaptured(point, colorStone))
+        {
+            // If a Stone would immediately be captured, we can play it IFF that move would capture enemy Stone(s)
+
+            Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move");
+            return false;
+        }
+
+        return true;
+    }
+
     // @return  Closest point on board if mouse currently hovering over board; (-1,-1) otherwise
     private Vector2 GetClosestGridPoint()
     {
@@ -424,6 +449,11 @@ public class GoBoard : MonoBehaviour
         // If we run out of points to check without having found an empty spot, this group is captured
         return true;
     }
+
+    //public bool IsGroupCaptured(Vector2 point, GoColor groupColor, Queue<Vector2> )
+    //{
+    //    return false;
+    //}
 
     // @param   point       Point to check if surrounded
     // @param   groupColor  Color of the group. Will check if surrounded by opposite color

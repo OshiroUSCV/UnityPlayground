@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum GoColor
 {
@@ -12,6 +13,11 @@ public class GoStateManager : MonoBehaviour
 {
     // The Game Board that is being played upon
     public GoBoard gameBoard;
+
+    // UI
+    public Text textScore;
+    public Text textTurn;
+    public Button btnPass;
 
     private bool mb_gameActive = true;
     private bool mb_blacksTurn = true;    // Black Starts
@@ -35,18 +41,18 @@ public class GoStateManager : MonoBehaviour
 
     }
 
-	// Use this for initialization
-	void Start ()
+    // Use this for initialization
+    void Start()
     {
         // Tell our Board about our existence	
         gameBoard.SetGameManager(this);
 
         // Initialize score
         ResetScore();
-	}
+    }
 
 
-    void PassTurn()
+    public void PassTurn()
     {
         if (mb_passed)
         {
@@ -64,6 +70,9 @@ public class GoStateManager : MonoBehaviour
     {
         // Change Turn
         mb_blacksTurn = !mb_blacksTurn;
+
+        // Update HUD
+        UpdateHud();
     }
 
     void EndGame()
@@ -74,37 +83,30 @@ public class GoStateManager : MonoBehaviour
             mb_gameActive = false;
         }
     }
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+
+    // Update is called once per frame
+    void Update() {
+
+    }
 
     public void OnBoardPointClicked(Vector2 point)
     {
-        int x = (int)point.x;
-        int y = (int)point.y;
-
-        // Check if point is empty
-        if (!gameBoard.IsPointEmpty(point))
+        // Do nothing if game has ended
+        if (!mb_gameActive)
         {
-            // If not, we can't play here
-            Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); already occupied");
             return;
         }
 
-        // Check if clicked point is a valid point for current Color to play at
-        // If not, do nothing
-        if (gameBoard.IsGroupCaptured(point, CurrentColor))
+        // If given Point is not a valid play, do nothing
+        if (!gameBoard.IsValidPlay(point, CurrentColor ))
         {
-            Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move");
+            return;
+
         }
+
         // Otherwise, place the Stone
-        else
-        {
-            gameBoard.CreatePiece(point, mb_blacksTurn);
-            OnStonePlayed();
-        }
+        gameBoard.CreatePiece(point, mb_blacksTurn);
+        OnStonePlayed();
     }
 
     private void OnStonePlayed()
@@ -120,10 +122,18 @@ public class GoStateManager : MonoBehaviour
     {
         m_scoreCaptures[(int)GoColor.GC_Black] = 0;
         m_scoreCaptures[(int)GoColor.GC_White] = fKomi; // Apply Komi value to white score
+        UpdateHud();
     }
 
     public void OnStonesCaptured(GoColor colorAttacker, int countCaptured)
     {
         m_scoreCaptures[(int)colorAttacker] += countCaptured;
+        UpdateHud();
+    }
+
+    protected void UpdateHud()
+    {
+        textScore.text = string.Format("<color=purple>SCORE:</color> <color=black>{0}</color> - <color=white>{1}</color>", m_scoreCaptures[0], m_scoreCaptures[1]);
+        textTurn.text = string.Format("<color=purple>ACTIVE PLAYER</color>\n<color={0}>{0}</color>", mb_blacksTurn ? "BLACK" : "WHITE");
     }
 }
