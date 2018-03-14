@@ -9,16 +9,39 @@ public enum GoColor
     GC_White = 1,
 }
 
+public struct GoTurn
+{
+    public int turnNum;        // Turn #
+    public GoColor turnColor;  // Color of player who took this turn
+    public Vector2 pointPlay;  // Point on board the Stone was played on (or (-1,-1) if passed
+    public int piecesCaptured; // # of pieces captured by this play
+    
+    public GoTurn(int turnCurr, GoColor color)
+    {
+        turnNum         = turnCurr;
+        turnColor       = color;
+        piecesCaptured  = 0;
+        pointPlay       = new Vector2(-1.0f, -1.0f);
+    }
+    public bool TurnPassed()
+    {
+        return (pointPlay.x < 0.0f);
+    }
+}
+
 public class GoStateManager : MonoBehaviour
 {
-    // The Game Board that is being played upon
+    // GameBoard data
     public GoBoard gameBoard;
+    protected List<GoTurn> m_listPlayHistory = new List<GoTurn>();
 
     // UI
     public Text textScore;
     public Text textTurn;
     public Button btnPass;
 
+    private int m_turnNumber = 0;           // Turn # (internal)
+    private GoTurn m_turnDataCurr;
     private bool mb_gameActive = true;
     private bool mb_blacksTurn = true;    // Black Starts
     private bool mb_passed = false;  // True if the previous player passed his turn. If another pass is received, the game ends
@@ -49,6 +72,9 @@ public class GoStateManager : MonoBehaviour
 
         // Initialize score
         ResetScore();
+
+        // Create initial turn data
+        m_turnDataCurr = new GoTurn(m_turnNumber, CurrentColor);
     }
 
 
@@ -60,7 +86,6 @@ public class GoStateManager : MonoBehaviour
         }
         else
         {
-
             mb_passed = true;
             EndTurn();
         }
@@ -68,8 +93,13 @@ public class GoStateManager : MonoBehaviour
     // 
     void EndTurn()
     {
+        // Store turn data
+        m_listPlayHistory.Add(m_turnDataCurr);
+
         // Change Turn
         mb_blacksTurn = !mb_blacksTurn;
+        m_turnNumber++;
+        m_turnDataCurr = new GoTurn(m_turnNumber, CurrentColor);
 
         // Update HUD
         UpdateHud();
@@ -106,6 +136,7 @@ public class GoStateManager : MonoBehaviour
 
         // Otherwise, place the Stone
         gameBoard.CreatePiece(point, mb_blacksTurn);
+        m_turnDataCurr.pointPlay = point;
         OnStonePlayed();
     }
 
@@ -127,7 +158,9 @@ public class GoStateManager : MonoBehaviour
 
     public void OnStonesCaptured(GoColor colorAttacker, int countCaptured)
     {
+        m_turnDataCurr.piecesCaptured = countCaptured;
         m_scoreCaptures[(int)colorAttacker] += countCaptured;
+
         UpdateHud();
     }
 

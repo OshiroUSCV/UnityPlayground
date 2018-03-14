@@ -19,7 +19,7 @@ public class GoBoard : MonoBehaviour
     protected float txtGridSquareLengthSide;  // Length of each side of a grid-square (in pixels)
     protected float txtGridPosRadiusSq;       // Radius for click detection of each grid position (squared)
 
-    protected GoPoint[,] gridPoints; 
+    protected GoPoint[,] gridPoints;
 
     // Use this for initialization
     void Start ()
@@ -293,7 +293,6 @@ public class GoBoard : MonoBehaviour
         foreach (Vector2 point_adj in list_adj)
         {
             queue_adjacents.Enqueue(point_adj);
-
         }
 
         int count_captured = 0;
