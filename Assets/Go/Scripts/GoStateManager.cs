@@ -64,6 +64,12 @@ public class GoStateManager : MonoBehaviour
 
     }
 
+    // @return  Most recent turn if available; otherwise turn w/ negative #
+    public GoTurn GetTurnPrev()
+    {
+        return (m_listPlayHistory.Count > 0 ? m_listPlayHistory[m_listPlayHistory.Count - 1] : new GoTurn(-1, GoColor.GC_Black));
+    }
+
     // Use this for initialization
     void Start()
     {

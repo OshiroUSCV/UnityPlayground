@@ -103,6 +103,16 @@ public class GoBoard : MonoBehaviour
         //        Debug.Log("Stones Captured: " + count_captured);
         //    }
         //}
+        // DEBUG: Stone Placing (Q = Black, W = White)
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            OnMouseClickDEBUG(true);
+        }
+        else
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            OnMouseClickDEBUG(false);
+        }
 
         // DEBUG: Check Point info
         if (Input.GetKeyDown(KeyCode.C))
@@ -132,24 +142,24 @@ public class GoBoard : MonoBehaviour
         }
     }
 
-    //private void OnMouseClickDEBUG(bool bLeft)
-    //{
-    //    // For clarity/readability
-    //    bool b_black = bLeft;
+    private void OnMouseClickDEBUG(bool bLeft)
+    {
+        // For clarity/readability
+        bool b_black = bLeft;
 
-    //    // Cast ray from current mouse position to board
-    //    Ray ray_click = Camera.main.ScreenPointToRay(Input.mousePosition);
+        // Cast ray from current mouse position to board
+        Ray ray_click = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-    //    RaycastHit hit_info;
-    //    if (Physics.Raycast(ray_click, out hit_info))//Physics.Raycast(pos_mouse, Vector3.down, out hit_info, /*Maximum Distance */1000.0f))
-    //    {
-    //        // Determine closest grid space
-    //        Vector2 pos_grid = GetClosestGridSpace(hit_info.point);
+        RaycastHit hit_info;
+        if (Physics.Raycast(ray_click, out hit_info))//Physics.Raycast(pos_mouse, Vector3.down, out hit_info, /*Maximum Distance */1000.0f))
+        {
+            // Determine closest grid space
+            Vector2 pos_grid = GetClosestGridSpace(hit_info.point);
 
-    //        // Create piece on that position :TODO: Verify if within radius
-    //        CreatePiece(pos_grid, b_black);
-    //    }
-    //}
+            // Create piece on that position :TODO: Verify if within radius
+            CreatePiece(pos_grid, b_black);
+        }
+    }
 
 
     // Check if a given point is a valid board position
@@ -188,9 +198,9 @@ public class GoBoard : MonoBehaviour
         // Check: If new Stone would be immediately be captured
         if (IsGroupCaptured(point, colorStone))
         {
-            // If a Stone would immediately be captured, 
-            // we can play it IFF that move would capture enemy Stone(s)
-
+            // If a Stone would immediately be captured, we can play it
+            // IFF that move would capture enemy Stone(s)
+            // AND we aren't violating the rule of Ko
             List<Vector2> list_blocked = new List<Vector2>();
             list_blocked.Add(point);
 
@@ -212,8 +222,18 @@ public class GoBoard : MonoBehaviour
             // If no captured were found, play is illegal
             if (!b_capture_detected)
             {
-                Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move");
+                Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move (surrounded)");
                 return false;
+            }
+            // Check for Ko
+            else
+            {
+                GoTurn turn_prev = gameStateManager.GetTurnPrev();
+                if (turn_prev.piecesCaptured == 1 && IsGroupCaptured(turn_prev.pointPlay, turn_prev.turnColor, list_blocked))
+                {
+                    Debug.Log("[GB] Could not create @ ( " + x + ", " + y + "); illegal move (Ko)");
+                    return false;
+                }
             }
         }
 
