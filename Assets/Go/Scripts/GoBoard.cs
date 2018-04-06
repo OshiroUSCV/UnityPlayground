@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
+
 public class GoBoard : MonoBehaviour
 {
     protected GoStateManager gameStateManager;
@@ -118,9 +120,11 @@ public class GoBoard : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.C))
         {
             Vector2 point_curr = GetClosestGridPoint();
-            PrintAdjacencyData((int)point_curr.x, (int)point_curr.y);
+            //PrintAdjacencyData((int)point_curr.x, (int)point_curr.y);
             Debug.Log(string.Format("Surrounded by Black: {0}", IsGroupCaptured(point_curr, GoColor.GC_White)));
             Debug.Log(string.Format("Surrounded by White: {0}", IsGroupCaptured(point_curr, GoColor.GC_Black)));
+            GroupInfo g = GroupInfo.CreateGroup(this, point_curr);
+            Debug.Log(g);
         }
     }
 
@@ -180,6 +184,16 @@ public class GoBoard : MonoBehaviour
     public bool IsPointEmpty(Vector2 point)
     {
         return (IsValidPoint(point) && gridPoints[(int)point.x, (int)point.y].IsEmpty());
+    }
+
+    public GoPoint GetPoint(Vector2 point)
+    {
+        if (!IsValidPoint(point))
+        {
+            return null;
+        }
+
+        return gridPoints[(int)point.x, (int)point.y];
     }
 
     // @return  True if the specified color can play in the given Point
@@ -304,8 +318,8 @@ public class GoBoard : MonoBehaviour
         // Place GoPiece GameObject in the GoPoint
         point_center.SetPiece(piece);
 
-        // Decrement neighboring point's empty count
-        UpdateAdjacentEmptySpaces(pointGrid, (color_attacker == GoColor.GC_Black));
+        //// Decrement neighboring point's empty count
+        //UpdateAdjacentEmptySpaces(pointGrid, (color_attacker == GoColor.GC_Black));
 
         // Check if we have captured any enemy pieces (Up/Down/Left/Right
         Queue<Vector2> queue_adjacents = new Queue<Vector2>();
@@ -398,10 +412,10 @@ public class GoBoard : MonoBehaviour
         int y = (int)pointGrid.y;
 
         bool b_removed = gridPoints[x, y].RemovePiece();
-        if (b_removed)
-        {
-            UpdateAdjacentEmptySpaces(pointGrid);
-        }
+        //if (b_removed)
+        //{
+        //    UpdateAdjacentEmptySpaces(pointGrid);
+        //}
         return b_removed;
     }
 
@@ -593,48 +607,263 @@ public class GoBoard : MonoBehaviour
         return list_udlr;
     }
 
-    ////////////////////////////////////////////////////////////////////
-    // :NOTE: Adjacency Status Tracking. MAY BE OBSOLETE/UNNECESSARY
-    // Remove: NEW
-    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter)
+    //  Retrieve immediately adjacent liberties for a given point. 
+    //  Allied adjacent stones do NOT count as liberties.
+    //  @param point    Point on the board to check for liberties
+    //  @return         # of empy adjacent spaces
+    public int GetLibertiesAdjacent(Vector2 point)
     {
-        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_R);
-        UpdateAdjacencyState(pointCenter + new Vector2(1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_L);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_U);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, 1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_D);
-    }
-
-    // Add: NEW
-    private void UpdateAdjacentEmptySpaces(Vector2 pointCenter, bool bIsBlack)
-    {
-        UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_R);
-        UpdateAdjacencyState(pointCenter + new Vector2(1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_L);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, -1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_U);
-        UpdateAdjacencyState(pointCenter + new Vector2(0, 1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_D);
-    }
-
-    private void UpdateAdjacencyState(Vector2 point, int state, int directionOffset)
-    {
-        // Return -1 if invalid point is requested
+        // Return -1 if invalid point
         if (!IsValidPoint(point))
         {
-            return;
+            return -1;
         }
 
-        int x = (int)point.x;
-        int y = (int)point.y;
+        // Otherwise, count # of empty adjacent points
+        int count_liberties     = 0;
+        List<Vector2> list_adj  = GetAdjacentPoints(point);
+        foreach (Vector2 point_adj in list_adj)
+        {
+            GoPoint gp_adj = gridPoints[(int)point_adj.x, (int)point_adj.y];
+            if (gp_adj.IsEmpty())
+            {
+                count_liberties++;
+            }
+        }
 
-        // Clear previous state
-        int state_new = gridPoints[x, y].AdjSpacesState & ~(0x000F << directionOffset); // :NOTE: Offset before invert or you'll shift in zeroes!
-        // Apply new state
-        state_new |= (state << directionOffset);
-        // Store
-        gridPoints[x, y].AdjSpacesState = state_new;
+        return count_liberties;
     }
 
-    private void PrintAdjacencyData(int x, int y)
+    //////////////////////////////////////////////////////////////////////
+    //// :NOTE: Adjacency Status Tracking. MAY BE OBSOLETE/UNNECESSARY
+    //// Remove: NEW
+    //private void UpdateAdjacentEmptySpaces(Vector2 pointCenter)
+    //{
+    //    UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_R);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(1, 0), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_L);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(0, -1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_U);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(0, 1), GoPoint.FLAG_EMPTY, GoPoint.OFFSET_D);
+    //}
+
+    //// Add: NEW
+    //private void UpdateAdjacentEmptySpaces(Vector2 pointCenter, bool bIsBlack)
+    //{
+    //    UpdateAdjacencyState(pointCenter + new Vector2(-1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_R);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(1, 0), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_L);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(0, -1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_U);
+    //    UpdateAdjacencyState(pointCenter + new Vector2(0, 1), (bIsBlack ? GoPoint.FLAG_BLACK : GoPoint.FLAG_WHITE), GoPoint.OFFSET_D);
+    //}
+
+    //private void UpdateAdjacencyState(Vector2 point, int state, int directionOffset)
+    //{
+    //    // Return -1 if invalid point is requested
+    //    if (!IsValidPoint(point))
+    //    {
+    //        return;
+    //    }
+
+    //    int x = (int)point.x;
+    //    int y = (int)point.y;
+
+    //    // Clear previous state
+    //    int state_new = gridPoints[x, y].AdjSpacesState & ~(0x000F << directionOffset); // :NOTE: Offset before invert or you'll shift in zeroes!
+    //    // Apply new state
+    //    state_new |= (state << directionOffset);
+    //    // Store
+    //    gridPoints[x, y].AdjSpacesState = state_new;
+    //}
+
+    //private void PrintAdjacencyData(int x, int y)
+    //{
+    //    gridPoints[x, y].PrintAdjacencyData();
+    //}
+    //////////////////////////////////////////////////////////////////////
+
+    /**
+ * Class:   GroupInfo
+ * Descr:   Stores information about a group of connected points.
+ *          Can be a set of empty points (Region), or of one of the two colored stones (Block).
+**/
+    public class GroupInfo
     {
-        gridPoints[x, y].PrintAdjacencyData();
+        /////////////////////////////////////////////
+        // Member Variables
+        protected GoColor groupType;
+
+        protected List<Vector2> groupPoints;
+        protected HashSet<Vector2> groupLiberties;
+
+        public GoColor GroupType
+        {
+            get
+            {
+                return groupType;
+            }
+        }
+
+        public int GroupSize
+        {
+            get
+            {
+                return groupPoints.Count;
+            }
+        }
+
+        public List<Vector2> GroupPoints
+        {
+            get
+            {
+                return groupPoints;
+            }
+        }
+
+        public int NumLiberties
+        {
+            get
+            {
+                return groupLiberties.Count;
+            }
+        }
+
+        // A block is a group of connected stones of a single color
+        public bool IsBlock
+        {
+            get
+            {
+                return (groupType >= 0);
+            }
+        }
+
+        // A region is an group of connected empty points
+        public bool IsRegion
+        {
+            get
+            {
+                return (groupType == GoColor.GC_Empty);
+            }
+        }
+
+        /////////////////////////////////////////////
+        // Functions
+        // Constructor
+        protected GroupInfo()
+        {
+            groupType = GoColor.GC_Empty;
+            groupPoints = new List<Vector2>();
+            groupLiberties = new HashSet<Vector2>();
+        }
+
+        // Factory
+        // Create new Group for a given point on the board
+        public static GroupInfo CreateGroup(GoBoard board, Vector2 point)
+        {
+            // Sanity Check: Cannot create group if point is not valid
+            if (!board.IsValidPoint(point))
+            {
+                return null;
+            }
+
+            GroupInfo group = new GroupInfo();
+
+            // Create hash to store all points that have been checked
+            HashSet<GoPoint> hash_group = new HashSet<GoPoint>();
+            // Create queue to store list of points that need to be checked
+            Queue<GoPoint> queue_points = new Queue<GoPoint>();
+
+            int x_curr = (int)point.x;
+            int y_curr = (int)point.y;
+
+            // Use initial point to determine the group's State (Empty/Black/White)
+            GoPoint point_curr  = board.gridPoints[x_curr, y_curr];
+            group.groupType     = point_curr.PointState;
+
+            // Queue initial point
+            queue_points.Enqueue(board.gridPoints[x_curr, y_curr]);
+            while (queue_points.Count > 0)
+            {
+                // Retrieve next point
+                point_curr = queue_points.Dequeue();
+                x_curr = (int)point_curr.PointBoard.x;
+                y_curr = (int)point_curr.PointBoard.y;
+
+                bool b_state_same = false;
+
+                // Only proceed if we haven't seen this point yet
+                if (!hash_group.Contains(point_curr))
+                {
+                    // Check current point is the same state as our Group
+                    if (point_curr.PointState == group.GroupType)
+                    {
+                        b_state_same = true;
+                    }
+                }
+
+                // If same, then we want to add it to our Group and check adjacent points
+                if (b_state_same)
+                {
+                    // Add Point to Group
+                    group.GroupPoints.Add(point_curr.PointBoard);
+
+                    // Retrieve adjacent points if allied
+                    List<Vector2> list_adj = board.GetAdjacentPoints(point_curr.PointBoard);
+                    foreach (Vector2 point_adj in list_adj)
+                    {
+                        queue_points.Enqueue(board.gridPoints[(int)point_adj.x, (int)point_adj.y]);
+                    }
+                }
+
+                // Mark GoPoint as checked
+                hash_group.Add(point_curr);
+            }
+
+            // If our Group's type is not territory, check for liberties
+            if (group.GroupType != GoColor.GC_Empty)
+            {
+                foreach (Vector2 gp_curr in group.GroupPoints)
+                {
+                    List<Vector2> points_adj = board.GetAdjacentPoints(gp_curr);
+                    foreach (Vector2 point_adj in points_adj)
+                    {
+                        if (board.GetPoint(point_adj).IsEmpty())
+                        {
+                            group.groupLiberties.Add(point_adj);
+                        }
+                    }
+                }
+            }
+
+            return group;
+        }
+
+        public override string ToString()
+        {
+            string state = "";
+            switch (GroupType)
+            {
+                case GoColor.GC_Empty:
+                    state = "Empty";
+                    break;
+                case GoColor.GC_Black:
+                    state = "Black";
+                    break;
+                case GoColor.GC_White:
+                    state = "White";
+                    break;
+            }
+
+            string s = "== GROUP INFO ==\n";
+            s += "Type: " + state + "\n";
+            s += "Size: " + GroupSize + "\n";
+            if (GroupType != GoColor.GC_Empty)
+            {
+                s += "Liberties: " + groupLiberties.Count + "\n";
+            }
+            foreach (Vector2 point_curr in groupPoints)
+            {
+                s += "\t" + point_curr + "\n";
+            }
+
+            return s;
+        }
     }
-    ////////////////////////////////////////////////////////////////////
 }

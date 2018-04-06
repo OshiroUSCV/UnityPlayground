@@ -91,10 +91,14 @@ public class GoPoint
         return b_removed;
     }
 
-    //public GoColor GetColor()
-    //{
-    //    return GoColor.GC_White; 
-    //}
+    public GoColor PointState
+    {
+        get
+        {
+            return (GoPiece == null ? GoColor.GC_Empty : GoPiece.Color);
+        }
+    }
+
     public GoStone GetStone()
     {
         return GoPiece;

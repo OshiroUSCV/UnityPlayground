@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public enum GoColor
 {
+    GC_Empty = -1,
     GC_Black = 0,
     GC_White = 1,
 }
@@ -33,7 +34,7 @@ public class GoStateManager : MonoBehaviour
 {
     // GameBoard data
     public GoBoard gameBoard;
-    protected List<GoTurn> m_listPlayHistory = new List<GoTurn>();
+    protected List<GoTurn> m_listPlayHistory = new List<GoTurn>(); // :NOTE: This history should probably go in the Board itself, I think...
 
     // UI
     public Text textScore;
